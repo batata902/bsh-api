@@ -1,8 +1,17 @@
-use axum::{Json, Router, extract::{self, Path, State}, http::StatusCode};
+use axum::{Json, 
+    Router, 
+    extract::{self, Path, State}, 
+    http::{StatusCode, Request},
+    response::Response,
+    middleware::{self, Next}};
 use axum::routing::{get, post, delete};
-
 use serde::{Serialize, Deserialize};
 use sqlx::{SqlitePool, prelude::FromRow};
+use crate::utils::{check_jwt, gen_jwt};
+use dotenvy::dotenv;
+use std::env;
+
+mod utils;
 
 #[derive(Serialize)]
 struct ResponseStatus {
@@ -11,12 +20,19 @@ struct ResponseStatus {
 
 #[derive(Serialize, Deserialize, FromRow)]
 struct LoginUser {
+    id: i64,
+    username: String,
+    password: String
+}
+
+#[derive(Deserialize, FromRow)]
+struct LoginRequest {
     username: String,
     password: String
 }
 
 #[derive(Serialize, FromRow)]
-struct SetCookie {
+struct SetToken {
     auth_token: String
 }
 
@@ -41,18 +57,36 @@ struct CreateUser {
     password: String
 }
 
+#[derive(Serialize, FromRow)]
+struct User {
+    id: i64,
+    nickcolor: String,
+    nickname: String,
+    username: String,
+    password: String
+}
+
 #[tokio::main]
 async fn main() {
-    let db = SqlitePool::connect("sqlite://database.db").await.unwrap();
+    dotenv().ok();
 
-    let app = Router::new()
-    .route("/", get(index))
-    .route("/api/create", post(create_user))
+    let database_url = env::var("DATABASE_URL").unwrap();
+
+    let db = SqlitePool::connect(&database_url).await.unwrap();
+
+    let protected = Router::new()
     .route("/user/:id", get(get_user))
     .route("/user/:id", delete(delete_user))
     .route("/update", post(update_user))
+    .route("/users", get(list_users))
     .route("/bolsonaro", get(get_bolsonaro))
+    .layer(middleware::from_fn(auth));
+
+    let app = Router::new()
+    .route("/user", post(create_user))
+    .route("/", get(index))
     .route("/login", post(login))
+    .merge(protected)
     .with_state(db);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9090").await.unwrap();
@@ -67,21 +101,55 @@ async fn index() -> String {
     format!("A api está no ar.")
 }
 
-async fn create_user(State(db): State<SqlitePool>, extract::Json(data): extract::Json<CreateUser>) -> Json<ResponseStatus> {
-    sqlx::query("INSERT INTO users (nickname, username, password) VALUES (?, ?, ?);")
+async fn auth(req: Request<axum::body::Body>, next: Next) -> Result<Response, StatusCode> {
+    let has_token = req.headers().get("authorization");
+
+    println!("{}: {}", req.method(), req.uri());
+
+    // Padrão nos headers -> Authorization: Bearer TOKEN
+    if let Some(token) = has_token {
+        let header_str = token.to_str().unwrap_or("");
+
+        if header_str.starts_with("Bearer ") {
+            // Remove o "Bearer " da string
+            let token = header_str.trim_start_matches("Bearer "); 
+            match check_jwt(token, env::var("JWT_SECRET").unwrap()) {
+                Ok(claims) => {
+                    if claims.is_admin == true {
+                        Ok(next.run(req).await)
+                    } else {
+                        Err(StatusCode::UNAUTHORIZED)
+                    }
+                },
+                Err(_) => Err(StatusCode::UNAUTHORIZED)
+            }
+        }
+        else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+
+}
+
+async fn create_user(State(db): State<SqlitePool>, extract::Json(data): extract::Json<CreateUser>) -> Result<Json<ResponseStatus>, StatusCode> {
+    let consulta = sqlx::query("INSERT INTO users (nickname, username, password) VALUES (?, ?, ?);")
     .bind(&data.nickname)
     .bind(&data.username)
     .bind(&data.password)
     .execute(&db)
-    .await
-    .unwrap();
+    .await;
 
-    Json(ResponseStatus { status: "ok".to_string() })
+    match consulta {
+        Ok(_) => Ok(Json(ResponseStatus { status: "ok".to_string() })),
+        Err(_) => Err(StatusCode::CONFLICT)
+    }
 }
 
 
 async fn get_user(State(db): State<SqlitePool>, Path(id): Path<u32>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
-    let user = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username, auth_token FROM users WHERE id=?").bind(&id).fetch_one(&db).await;
+    let user = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE id=?").bind(&id).fetch_one(&db).await;
 
     match user {
         Ok(u) => Ok(Json(u)),
@@ -104,12 +172,29 @@ async fn delete_user(State(db): State<SqlitePool>, Path(id): Path<u32>) -> Resul
     }
 }
 
-async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::Json<LoginUser>) -> Result<Json<SetCookie>, (StatusCode, Json<ResponseStatus>)> {
-    let logged_in = sqlx::query_as::<_, LoginUser>("SELECT * FROM users WHERE username=? AND password=?;").bind(&data.username).bind(&data.password).fetch_one(&db).await;
+async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::Json<LoginRequest>) -> Result<Json<SetToken>, (StatusCode, Json<ResponseStatus>)> {
+    let logged_in = sqlx::query_as::<_, LoginUser>("SELECT id, username, password FROM users WHERE username=?;").bind(&data.username).fetch_one(&db).await;
 
     match logged_in {
-        Ok(_) => Ok(Json(SetCookie { auth_token: "cookiefodao".to_string() })),
-        Err(_) => Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus {status: "forbbiden".to_string()})))
+        Ok(user_data) => {
+            if user_data.password == data.password {
+                Ok(Json(SetToken {auth_token: gen_jwt(user_data.id, env::var("JWT_SECRET").unwrap())}))
+            } else {
+                Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
+            }
+        },
+        Err(_) => Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus {status: "unauthorized".to_string()})))
+    }
+}
+
+// FOR DEV
+
+async fn list_users(State(db): State<SqlitePool>) -> Result<Json<Vec<User>>, StatusCode> {
+    let users = sqlx::query_as::<_, User>("SELECT * FROM users").fetch_all(&db).await;
+
+    match users {
+        Ok(array) => Ok(Json(array)),
+        Err(_) => Err(StatusCode::NOT_FOUND)
     }
 }
 

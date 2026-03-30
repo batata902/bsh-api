@@ -1,1 +1,3 @@
 /target
+/src/database.db
+.env
