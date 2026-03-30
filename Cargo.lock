@@ -138,8 +138,10 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "dotenvy",
+ "hex",
  "jsonwebtoken",
  "serde",
+ "sha2",
  "sqlx",
  "tokio",
 ]

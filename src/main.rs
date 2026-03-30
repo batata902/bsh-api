@@ -7,7 +7,7 @@ use axum::{Json,
 use axum::routing::{get, post, delete};
 use serde::{Serialize, Deserialize};
 use sqlx::{SqlitePool, prelude::FromRow};
-use crate::utils::{check_jwt, gen_jwt};
+use crate::utils::{check_jwt, gen_jwt, get_hash};
 use dotenvy::dotenv;
 use std::env;
 
@@ -137,7 +137,7 @@ async fn create_user(State(db): State<SqlitePool>, extract::Json(data): extract:
     let consulta = sqlx::query("INSERT INTO users (nickname, username, password) VALUES (?, ?, ?);")
     .bind(&data.nickname)
     .bind(&data.username)
-    .bind(&data.password)
+    .bind(get_hash(&data.password))
     .execute(&db)
     .await;
 
@@ -177,7 +177,7 @@ async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::Json<
 
     match logged_in {
         Ok(user_data) => {
-            if user_data.password == data.password {
+            if user_data.password == get_hash(&data.password) {
                 Ok(Json(SetToken {auth_token: gen_jwt(user_data.id, env::var("JWT_SECRET").unwrap())}))
             } else {
                 Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))

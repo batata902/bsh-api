@@ -1,6 +1,7 @@
 use jsonwebtoken::{EncodingKey, encode, Header, DecodingKey, decode, Validation, errors::Error};
 use serde::{Serialize, Deserialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Digest};
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -30,4 +31,15 @@ pub fn check_jwt(token: &str, secret: String) -> Result<Claims, Error> {
     let valido = decode(token, &DecodingKey::from_secret(secret.as_ref()), &Validation::default())?;
 
     Ok(valido.claims)
+}
+
+pub fn get_hash(data: &String) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_bytes());
+
+    let resultado = hasher.finalize();
+
+    let hash_hex = hex::encode(resultado);
+
+    hash_hex
 }
