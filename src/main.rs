@@ -10,6 +10,17 @@ struct ResponseStatus {
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
+struct LoginUser {
+    username: String,
+    password: String
+}
+
+#[derive(Serialize, FromRow)]
+struct SetCookie {
+    auth_token: String
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
 struct UpdateUser {
     id: i64,
     nickname: String
@@ -41,6 +52,7 @@ async fn main() {
     .route("/user/:id", delete(delete_user))
     .route("/update", post(update_user))
     .route("/bolsonaro", get(get_bolsonaro))
+    .route("/login", post(login))
     .with_state(db);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9090").await.unwrap();
@@ -89,6 +101,15 @@ async fn delete_user(State(db): State<SqlitePool>, Path(id): Path<u32>) -> Resul
     match consulta {
         Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
         Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus {status: "not found".to_string()})))
+    }
+}
+
+async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::Json<LoginUser>) -> Result<Json<SetCookie>, (StatusCode, Json<ResponseStatus>)> {
+    let logged_in = sqlx::query_as::<_, LoginUser>("SELECT * FROM users WHERE username=? AND password=?;").bind(&data.username).bind(&data.password).fetch_one(&db).await;
+
+    match logged_in {
+        Ok(_) => Ok(Json(SetCookie { auth_token: "cookiefodao".to_string() })),
+        Err(_) => Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus {status: "forbbiden".to_string()})))
     }
 }
 
