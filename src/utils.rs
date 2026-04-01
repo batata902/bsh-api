@@ -23,7 +23,7 @@ pub fn gen_refresh_token(user_id: i64, secret: String) -> String {
     let claims = Claims {
         sub: user_id.to_string(),
         is_admin: false,
-        exp: (60 * 60 * 60 * 24 * 14)
+        exp: (60 * 60 * 24 * 14)
     };
 
     encode(&Header::default(), 
@@ -75,15 +75,6 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     }
 }
 
-pub async fn store_refresh(db: SqlitePool, refresh_token: &str) {
-    let _ = sqlx::query("INSERT INTO users (refresh) VALUES (?)").bind(refresh_token).execute(&db).await;
+pub async fn store_refresh(db: SqlitePool, refresh_token: &str, id: i64) {
+    let _ = sqlx::query("INSERT INTO users (refresh) VALUES (?) WHERE id=?").bind(refresh_token).bind(id).execute(&db).await;
 }
-
-// pub async fn get_password_by_id(db: &SqlitePool, id: i64) -> String {
-//     let argon_password = sqlx::query_as::<_, UserPassword>("SELECT password FROM users WHERE id=?;").bind(id).fetch_one(db).await;
-
-//     match argon_password {
-//         Ok(password) => password.password,
-//         Err(_) => "".to_string()
-//     }
-// }

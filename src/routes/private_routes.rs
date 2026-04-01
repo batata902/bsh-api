@@ -59,7 +59,7 @@ pub async fn refresh(State(db): State<SqlitePool>, Extension(user): Extension<Au
 }
 
 pub async fn get_bolsonaro(State(db): State<SqlitePool>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
-    let bolsonaro = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE username='Bolsonaro'").fetch_one(&db).await;
+    let bolsonaro = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE username='bolsonaro'").fetch_one(&db).await;
 
     match bolsonaro {
         Ok(bol) => Ok(Json(bol)),

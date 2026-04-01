@@ -42,7 +42,7 @@ pub async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::J
 
             if check {
                 let refresh_token = gen_refresh_token(user_data.id, env::var("JWT_SECRET").unwrap());
-                store_refresh(db, refresh_token.as_str()).await;
+                store_refresh(db, refresh_token.as_str(), user_data.id).await;
                 Ok(Json(SetToken {auth_token: gen_jwt(user_data.id, env::var("JWT_SECRET").unwrap())}))
             } else {
                 Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string()})))
