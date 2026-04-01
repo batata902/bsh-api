@@ -1,19 +1,24 @@
-use crate::models::models::*;
-use axum::{Json, extract::{self, State, Path}, http::StatusCode};
+use std::env;
+
+use crate::{models::models::*, utils::gen_jwt};
+use axum::{Json, extract::{self, State, Path, Extension}, http::StatusCode};
 use sqlx::SqlitePool;
 
+pub async fn get_user(State(db): State<SqlitePool>, Path(id): Path<i64>, Extension(user): Extension<AuthUser>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
+    if id != user.user_id {
+        Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
+    } else {
+        let user = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE id=?").bind(&id).fetch_one(&db).await;
 
-pub async fn get_user(State(db): State<SqlitePool>, Path(id): Path<u32>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
-    let user = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE id=?").bind(&id).fetch_one(&db).await;
-
-    match user {
-        Ok(u) => Ok(Json(u)),
-        Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+        match user {
+            Ok(u) => Ok(Json(u)),
+            Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+        }
     }
 }
 
-pub async fn update_user(State(db): State<SqlitePool>, extract::Json(data): extract::Json<UpdateUser>)-> Result<Json<ResponseStatus>, (StatusCode, Json<ResponseStatus>)> {
-    match sqlx::query("UPDATE users SET nickname=? WHERE id=?").bind(&data.nickname).bind(&data.id).execute(&db).await {
+pub async fn update_user(Extension(user): Extension<AuthUser>, State(db): State<SqlitePool>, extract::Json(data): extract::Json<UpdateUser>)-> Result<Json<ResponseStatus>, (StatusCode, Json<ResponseStatus>)> {
+    match sqlx::query("UPDATE users SET nickname=? WHERE id=?").bind(&data.nickname).bind(&user.user_id).execute(&db).await {
         Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
         Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
     }
@@ -33,6 +38,23 @@ pub async fn list_users(State(db): State<SqlitePool>) -> Result<Json<Vec<User>>,
     match users {
         Ok(array) => Ok(Json(array)),
         Err(_) => Err(StatusCode::NOT_FOUND)
+    }
+}
+
+pub async fn refresh(State(db): State<SqlitePool>, Extension(user): Extension<AuthUser>, tok: String) -> String {
+    let refresh_t = sqlx::query_as::<_, UserRefresh>("SELECT refresh FROM users WHERE id=?;")
+    .bind(user.user_id).fetch_one(&db).await;
+
+    match refresh_t {
+        Ok(token) => {
+            if token.refresh_token == tok {
+                let new_acces_token = gen_jwt(user.user_id, env::var("JWT_SECRET").unwrap());
+                new_acces_token
+            } else {
+                "".to_string()
+            }
+        },
+        Err(_) => "".to_string()
     }
 }
 

@@ -23,6 +23,7 @@ async fn main() {
     .route("/update", post(update_user))
     .route("/users", get(list_users))
     .route("/bolsonaro", get(get_bolsonaro))
+    .route("/refresh", get(refresh))
     .layer(middleware::from_fn(midd::auth));
 
     let app = Router::new()

@@ -1,8 +1,8 @@
 use axum::{http::{Request, StatusCode}, middleware::Next, response::Response};
-use crate::utils::*;
+use crate::{models::models::AuthUser, utils::*};
 use std::env;
 
-pub async fn auth(req: Request<axum::body::Body>, next: Next) -> Result<Response, StatusCode> {
+pub async fn auth(mut req: Request<axum::body::Body>, next: Next) -> Result<Response, StatusCode> {
     let has_token = req.headers().get("authorization");
 
     println!("{}: {}", req.method(), req.uri());
@@ -16,11 +16,11 @@ pub async fn auth(req: Request<axum::body::Body>, next: Next) -> Result<Response
             let token = header_str.trim_start_matches("Bearer "); 
             match check_jwt(token, env::var("JWT_SECRET").unwrap()) {
                 Ok(claims) => {
-                    if claims.is_admin == true {
-                        Ok(next.run(req).await)
-                    } else {
-                        Err(StatusCode::UNAUTHORIZED)
-                    }
+                    let id = claims.sub.parse::<i64>().map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+                    req.extensions_mut().insert(AuthUser { user_id: id });
+
+                    Ok(next.run(req).await)
                 },
                 Err(_) => Err(StatusCode::UNAUTHORIZED)
             }

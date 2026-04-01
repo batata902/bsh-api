@@ -1,6 +1,16 @@
 use serde::{Serialize, Deserialize};
 use sqlx::prelude::FromRow;
+use validator::Validate;
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct AuthUser {
+    pub user_id: i64
+}
+
+#[derive(Deserialize, FromRow)]
+pub struct UserRefresh {
+    pub refresh_token: String
+}
 
 #[derive(Serialize)]
 pub struct ResponseStatus {
@@ -14,9 +24,11 @@ pub struct LoginUser {
     pub password: String
 }
 
-#[derive(Deserialize, FromRow)]
+#[derive(Deserialize, FromRow, Validate)]
 pub struct LoginRequest {
+    #[validate(length(min = 3, max = 10))]
     pub username: String,
+    #[validate(length(min = 5, max = 100))]
     pub password: String
 }
 
@@ -39,10 +51,13 @@ pub struct PublicUser {
     pub username: String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Validate)]
 pub struct CreateUser {
+    #[validate(length(min = 3, max = 10))]
     pub nickname: String,
+    #[validate(length(min = 3, max = 10))]
     pub username: String,
+    #[validate(length(min = 5, max = 100))]
     pub password: String
 }
 
