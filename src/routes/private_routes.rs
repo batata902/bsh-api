@@ -1,6 +1,4 @@
-use std::env;
-
-use crate::{models::models::*, utils::gen_jwt};
+use crate::{models::models::*, };
 use axum::{Json, extract::{self, State, Path, Extension}, http::StatusCode};
 use sqlx::SqlitePool;
 
@@ -38,23 +36,6 @@ pub async fn list_users(State(db): State<SqlitePool>) -> Result<Json<Vec<User>>,
     match users {
         Ok(array) => Ok(Json(array)),
         Err(_) => Err(StatusCode::NOT_FOUND)
-    }
-}
-
-pub async fn refresh(State(db): State<SqlitePool>, Extension(user): Extension<AuthUser>, tok: String) -> String {
-    let refresh_t = sqlx::query_as::<_, UserRefresh>("SELECT refresh FROM users WHERE id=?;")
-    .bind(user.user_id).fetch_one(&db).await;
-
-    match refresh_t {
-        Ok(token) => {
-            if token.refresh_token == tok {
-                let new_acces_token = gen_jwt(user.user_id, env::var("JWT_SECRET").unwrap());
-                new_acces_token
-            } else {
-                "".to_string()
-            }
-        },
-        Err(_) => "".to_string()
     }
 }
 

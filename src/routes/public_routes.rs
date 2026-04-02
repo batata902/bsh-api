@@ -38,19 +38,45 @@ pub async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::J
         Ok(user_data) => {
             let check = verify_password(&data.password, &user_data.password);
 
-            println!("{}", check);
-
             if check {
                 let refresh_token = gen_refresh_token(user_data.id, env::var("JWT_SECRET").unwrap());
-                store_refresh(db, refresh_token.as_str(), user_data.id).await;
-                Ok(Json(SetToken {auth_token: gen_jwt(user_data.id, env::var("JWT_SECRET").unwrap())}))
+
+                match store_refresh(&db, refresh_token.as_str(), user_data.id).await {
+                    Ok(_) => Ok(Json(SetToken {auth_token: gen_jwt(user_data.id, env::var("JWT_SECRET").unwrap()), refresh_token: refresh_token } )),
+                    Err(_) => Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
+                }
             } else {
                 Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string()})))
             }
         },
-        Err(e) => {
-            println!("{}", e);
+        Err(_) => {
             Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus {status: "unauthorized".to_string()})))
         }
+    }
+}
+
+pub async fn refresh(State(db): State<SqlitePool>, tok: extract::Json<Token>) -> Result<Json<Token>, StatusCode> {
+    if let Ok(claim) = check_refresh(&tok.token, env::var("JWT_SECRET").unwrap()) {
+        if let Ok(user_id) = claim.sub.parse::<i64>() {
+            let refresh_t = sqlx::query_as::<_, UserRefresh>("SELECT refresh FROM users WHERE id=?;")
+        .bind(user_id).fetch_one(&db).await;
+            match refresh_t {
+                Ok(token) => {
+                    if token.refresh == tok.token {
+                        let new_access_token = gen_jwt(user_id, env::var("JWT_SECRET").unwrap());
+                        Ok(Json(Token { token: new_access_token } ))
+                    } else {
+                        Err(StatusCode::UNAUTHORIZED)
+                    }
+                },
+                Err(_) => {
+                    Err(StatusCode::UNAUTHORIZED)
+                }
+            }
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    } else {
+       Err(StatusCode::UNAUTHORIZED)
     }
 }

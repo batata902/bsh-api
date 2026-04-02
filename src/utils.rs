@@ -12,6 +12,12 @@ pub struct Claims {
     pub exp: usize
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RefreshClaim {
+    pub sub: String,
+    pub exp: usize
+}
+
 fn now() -> usize {
     SystemTime::now() // Pega horario atual
     .duration_since(UNIX_EPOCH) // Desde o UNIX_EPOCH
@@ -20,10 +26,9 @@ fn now() -> usize {
 }
 
 pub fn gen_refresh_token(user_id: i64, secret: String) -> String {
-    let claims = Claims {
+    let claims = RefreshClaim {
         sub: user_id.to_string(),
-        is_admin: false,
-        exp: (60 * 60 * 24 * 14)
+        exp: now() + (60 * 60 * 24 * 14)
     };
 
     encode(&Header::default(), 
@@ -39,6 +44,12 @@ pub fn gen_jwt(user_id: i64, secret: String) -> String {
     };
 
     encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref())).unwrap()
+}
+
+pub fn check_refresh(token: &str, secret: String) -> Result<RefreshClaim, Error> {
+    let valido = decode(token, &DecodingKey::from_secret(secret.as_ref()), &Validation::default())?;
+
+    Ok(valido.claims)
 }
 
 pub fn check_jwt(token: &str, secret: String) -> Result<Claims, Error> {
@@ -75,6 +86,12 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     }
 }
 
-pub async fn store_refresh(db: SqlitePool, refresh_token: &str, id: i64) {
-    let _ = sqlx::query("INSERT INTO users (refresh) VALUES (?) WHERE id=?").bind(refresh_token).bind(id).execute(&db).await;
+pub async fn store_refresh(db: &SqlitePool, refresh_token: &str, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE users SET refresh=? WHERE id=?")
+    .bind(refresh_token)
+    .bind(id)
+    .execute(db)
+    .await?;
+
+    Ok(())
 }

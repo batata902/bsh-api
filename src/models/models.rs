@@ -9,7 +9,7 @@ pub struct AuthUser {
 
 #[derive(Deserialize, FromRow)]
 pub struct UserRefresh {
-    pub refresh_token: String
+    pub refresh: String
 }
 
 #[derive(Serialize)]
@@ -34,7 +34,13 @@ pub struct LoginRequest {
 
 #[derive(Serialize, FromRow)]
 pub struct SetToken {
-    pub auth_token: String
+    pub auth_token: String,
+    pub refresh_token: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Token {
+    pub token: String
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -64,6 +70,7 @@ pub struct CreateUser {
 #[derive(Serialize, FromRow)]
 pub struct User {
     pub id: i64,
+    pub refresh: String,
     pub nickcolor: String,
     pub nickname: String,
     pub username: String,
