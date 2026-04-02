@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT,
     refresh TEXT,
     nickname TEXT DEFAULT 'anonymous',
     nickcolor TEXT DEFAULT '#ffffff',

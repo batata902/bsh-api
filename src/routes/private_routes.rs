@@ -22,11 +22,15 @@ pub async fn update_user(Extension(user): Extension<AuthUser>, State(db): State<
     }
 }
 
-pub async fn delete_user(State(db): State<SqlitePool>, Path(id): Path<u32>) -> Result<Json<ResponseStatus>, (StatusCode, Json<ResponseStatus>)> {
-    let consulta = sqlx::query("DELETE FROM users WHERE id=?").bind(id).execute(&db).await;
-    match consulta {
-        Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
-        Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus {status: "not found".to_string()})))
+pub async fn delete_user(State(db): State<SqlitePool>, Path(id): Path<i64>, Extension(user): Extension<AuthUser>) -> Result<Json<ResponseStatus>, (StatusCode, Json<ResponseStatus>)> {
+    if user.user_id == id {
+        let consulta = sqlx::query("DELETE FROM users WHERE id=?").bind(id).execute(&db).await;
+        match consulta {
+            Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
+            Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus {status: "not found".to_string()})))
+        }
+    } else {
+        Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
     }
 }
 

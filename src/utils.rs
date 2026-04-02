@@ -1,22 +1,9 @@
 use jsonwebtoken::{EncodingKey, encode, Header, DecodingKey, decode, Validation, errors::Error};
-use serde::{Serialize, Deserialize};
 use std::{time::{SystemTime, UNIX_EPOCH}};
 use argon2::{Argon2, password_hash::{SaltString, PasswordHasher, PasswordHash, PasswordVerifier}};
 use rand_core::OsRng;
 use sqlx::SqlitePool;
-
-#[derive(Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: String, // Vamos guardar o id do usuario aqui
-    pub is_admin: bool,
-    pub exp: usize
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct RefreshClaim {
-    pub sub: String,
-    pub exp: usize
-}
+use crate::models::models::{RefreshClaim, Claims};
 
 fn now() -> usize {
     SystemTime::now() // Pega horario atual
