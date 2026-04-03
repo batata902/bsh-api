@@ -80,6 +80,20 @@ pub struct CreateUser {
     pub password: String
 }
 
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct Posts {
+    pub id: i64,
+    pub data_post: String,
+    pub nickname: String,
+    pub content: String,
+    pub nickcolor: String
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct SendPost {
+    pub content: String
+}
+
 #[derive(Serialize, FromRow)]
 pub struct User {
     pub id: i64,
@@ -87,6 +101,5 @@ pub struct User {
     pub refresh: String,
     pub nickcolor: String,
     pub nickname: String,
-    pub username: String,
-    pub password: String
+    pub username: String
 }

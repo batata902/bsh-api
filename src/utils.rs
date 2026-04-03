@@ -3,7 +3,7 @@ use std::{time::{SystemTime, UNIX_EPOCH}};
 use argon2::{Argon2, password_hash::{SaltString, PasswordHasher, PasswordHash, PasswordVerifier}};
 use rand_core::OsRng;
 use sqlx::SqlitePool;
-use crate::models::models::{RefreshClaim, Claims};
+use crate::models::models::{Claims, RefreshClaim};
 
 fn now() -> usize {
     SystemTime::now() // Pega horario atual
@@ -81,4 +81,19 @@ pub async fn store_refresh(db: &SqlitePool, refresh_token: &str, id: i64) -> Res
     .await?;
 
     Ok(())
+}
+
+pub async fn is_admin(db: &SqlitePool, user_id: i64) -> bool {
+    let query: Result<String, sqlx::Error> = sqlx::query_scalar("SELECT role FROM users WHERE id=?;").bind(user_id).fetch_one(db).await;
+
+    match query {
+        Ok(role) => {
+            if role == "admin" {
+                true
+            } else {
+                false
+            }
+        }
+        Err(_) => false
+    }
 }
