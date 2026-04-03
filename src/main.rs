@@ -28,20 +28,20 @@ async fn main() {
     let db = SqlitePool::connect(&database_url).await.unwrap();
 
     let protected = Router::new()
-    .route("/user/:id", get(get_user))
-    .route("/user/:id", delete(delete_user))
-    .route("/update", post(update_user))
-    .route("/users", get(list_users))
-    .route("/bolsonaro", get(get_bolsonaro))
-    .route("/posts", post(send_post))
-    .route("/posts", get(all_posts))
+    .route("/api/user/:id", get(get_user))
+    .route("/api/user/:id", delete(delete_user))
+    .route("/api/update", post(update_user))
+    .route("/api/users", get(list_users))
+    .route("/api/bolsonaro", get(get_bolsonaro))
+    .route("/api/posts", post(send_post))
+    .route("/api/posts", get(all_posts))
     .layer(middleware::from_fn(midd::auth));
 
     let app = Router::new()
-    .route("/user", post(create_user))
+    .route("/api/user", post(create_user))
     .route("/", get(index))
-    .route("/login", post(login))
-    .route("/refresh", post(refresh))
+    .route("/api/login", post(login))
+    .route("/api/refresh", post(refresh))
     .merge(protected)
     .with_state(db);
 
