@@ -28,10 +28,10 @@ A API possui rotas públicas e privadas.
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/api/user/<id>` | Retorna informações do usuário |
-| DELETE | `/api/user/<id>` | Deleta usuário |
-| POST | `/api/update` | Atualiza informações do usuário |
 | GET | `/api/users` | Lista todos os usuários |
 | GET | `/api/posts` | Lista todos os posts |
+| DELETE | `/api/user/<id>` | Deleta usuário |
+| POST | `/api/update` | Atualiza informações do usuário |
 | POST | `/api/posts` | Envia um novo post |
 
 ### Rotas públicas
