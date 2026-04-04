@@ -77,11 +77,15 @@ pub async fn all_posts(State(db): State<SqlitePool>) -> Result<Json<Vec<Posts>>,
     }
 }
 
-pub async fn get_bolsonaro(State(db): State<SqlitePool>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
-    let bolsonaro = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE username='bolsonaro'").fetch_one(&db).await;
+pub async fn get_bolsonaro(State(db): State<SqlitePool>, Extension(user): Extension<AuthUser>) -> Result<Json<PublicUser>, (StatusCode, Json<ResponseStatus>)> {
+    if is_admin(&db, user.user_id).await {
+        let bolsonaro = sqlx::query_as::<_, PublicUser>("SELECT id, nickname, nickcolor, username FROM users WHERE username='bolsonaro'").fetch_one(&db).await;
 
-    match bolsonaro {
-        Ok(bol) => Ok(Json(bol)),
-        Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+        match bolsonaro {
+            Ok(bol) => Ok(Json(bol)),
+            Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+        }
+    } else {
+        Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
     }
 }
