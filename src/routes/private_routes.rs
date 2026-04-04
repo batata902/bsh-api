@@ -17,9 +17,13 @@ pub async fn get_user(State(db): State<SqlitePool>, Path(id): Path<i64>, Extensi
 }
 
 pub async fn update_user(Extension(user): Extension<AuthUser>, State(db): State<SqlitePool>, extract::Json(data): extract::Json<UpdateUser>)-> Result<Json<ResponseStatus>, (StatusCode, Json<ResponseStatus>)> {
-    match sqlx::query("UPDATE users SET nickname=? WHERE id=?").bind(&data.nickname).bind(&user.user_id).execute(&db).await {
-        Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
-        Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+    if user.user_id == data.id || is_admin(&db, user.user_id).await {
+        match sqlx::query("UPDATE users SET nickcolor=?, nickname=? WHERE id=?").bind(&data.nickcolor).bind(&data.nickname).bind(data.id).execute(&db).await {
+            Ok(_) => Ok(Json(ResponseStatus {status: "ok".to_string()})),
+            Err(_) => Err((StatusCode::NOT_FOUND, Json(ResponseStatus { status: "not found".to_string() })))
+        }
+    } else {
+        Err((StatusCode::UNAUTHORIZED, Json(ResponseStatus { status: "unauthorized".to_string() })))
     }
 }
 

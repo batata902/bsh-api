@@ -100,7 +100,9 @@ Atualiza informações do usuário.
 Exemplo de JSON:
 
     {
-      "nickname": "novo_nickname"
+        "id": 10,
+        "nickname": "novo_nick_name",
+        "nickcolor": "#b34f5f" -> Cor do nick em hexadecimal
     }
 
 #### GET `/api/users`

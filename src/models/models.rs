@@ -58,7 +58,9 @@ pub struct Token {
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct UpdateUser {
-    pub nickname: String
+    pub id: i64,
+    pub nickname: String,
+    pub nickcolor: String
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
