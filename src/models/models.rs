@@ -2,6 +2,49 @@ use serde::{Serialize, Deserialize};
 use sqlx::prelude::FromRow;
 use validator::Validate;
 
+// User structs
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct UpdateUser {
+    pub id: i64,
+    pub nickname: String,
+    pub nickcolor: String
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct PublicUser {
+    pub id: i64,
+    pub nickname: String,
+    pub nickcolor: String,
+    pub username: String
+}
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct CreateUser {
+    pub role: String,
+    #[validate(length(min = 3, max = 10))]
+    pub nickname: String,
+    #[validate(length(min = 3, max = 10))]
+    pub username: String,
+    #[validate(length(min = 5, max = 100))]
+    pub password: String
+}
+
+#[derive(Serialize, FromRow)]
+pub struct User {
+    pub id: i64,
+    pub role: String,
+    pub refresh: String,
+    pub nickcolor: String,
+    pub nickname: String,
+    pub username: String
+}
+
+// Auth and JWT operations
+#[derive(Deserialize, Serialize, Clone)]
+pub struct AuthUser {
+    pub user_id: i64
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // Vamos guardar o id do usuario aqui
@@ -13,11 +56,6 @@ pub struct Claims {
 pub struct RefreshClaim {
     pub sub: String,
     pub exp: usize
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct AuthUser {
-    pub user_id: i64
 }
 
 #[derive(Deserialize, FromRow)]
@@ -56,32 +94,8 @@ pub struct Token {
     pub token: String
 }
 
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct UpdateUser {
-    pub id: i64,
-    pub nickname: String,
-    pub nickcolor: String
-}
 
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct PublicUser {
-    pub id: i64,
-    pub nickname: String,
-    pub nickcolor: String,
-    pub username: String
-}
-
-#[derive(Serialize, Deserialize, Validate)]
-pub struct CreateUser {
-    pub role: String,
-    #[validate(length(min = 3, max = 10))]
-    pub nickname: String,
-    #[validate(length(min = 3, max = 10))]
-    pub username: String,
-    #[validate(length(min = 5, max = 100))]
-    pub password: String
-}
-
+// Posts
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct Posts {
     pub id: i64,
@@ -94,14 +108,4 @@ pub struct Posts {
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct SendPost {
     pub content: String
-}
-
-#[derive(Serialize, FromRow)]
-pub struct User {
-    pub id: i64,
-    pub role: String,
-    pub refresh: String,
-    pub nickcolor: String,
-    pub nickname: String,
-    pub username: String
 }

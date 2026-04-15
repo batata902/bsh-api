@@ -18,7 +18,7 @@ pub async fn create_user(State(db): State<SqlitePool>, extract::Json(data): extr
     .bind(&data.role)
     .bind(&data.nickname)
     .bind(&data.username)
-    .bind(get_hash(&data.password))
+    .bind(get_hash(&data.password).await)
     .execute(&db)
     .await;
 
@@ -57,7 +57,7 @@ pub async fn login(State(db): State<SqlitePool>, extract::Json(data): extract::J
 }
 
 pub async fn refresh(State(db): State<SqlitePool>, tok: extract::Json<Token>) -> Result<Json<Token>, StatusCode> {
-    if let Ok(claim) = check_refresh(&tok.token, env::var("REFRESH_SECRET").unwrap()) {
+    if let Ok(claim) = check_refresh(&tok.token, env::var("REFRESH_SECRET", ).unwrap()) {
         if let Ok(user_id) = claim.sub.parse::<i64>() {
             let refresh_t = sqlx::query_as::<_, UserRefresh>("SELECT refresh FROM users WHERE id=?;")
         .bind(user_id).fetch_one(&db).await;

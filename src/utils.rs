@@ -45,7 +45,7 @@ pub fn check_jwt(token: &str, secret: String) -> Result<Claims, Error> {
     Ok(valido.claims)
 }
 
-pub fn get_hash(data: &String) -> String {
+pub async fn get_hash(data: &String) -> String {
     let salt = SaltString::generate(&mut OsRng);
 
     Argon2::default()
@@ -74,8 +74,9 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 }
 
 pub async fn store_refresh(db: &SqlitePool, refresh_token: &str, id: i64) -> Result<(), sqlx::Error> {
+    let refresh_hash = get_hash(&refresh_token.to_string()).await;
     sqlx::query("UPDATE users SET refresh=? WHERE id=?")
-    .bind(refresh_token)
+    .bind(refresh_hash)
     .bind(id)
     .execute(db)
     .await?;
